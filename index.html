@@ -161,6 +161,9 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
     <option value="low">Low</option>
   </select>
   <input id="filterSearch" type="text" placeholder="Search tasks..." oninput="render()" style="min-width:160px">
+  <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#666;cursor:pointer;white-space:nowrap">
+    <input type="checkbox" id="showArchived" onchange="render()"> Show archived
+  </label>
   <div class="view-toggle">
     <button id="btnKanban" class="active" onclick="setView('kanban')">Board</button>
     <button id="btnList" onclick="setView('list')">List</button>
@@ -298,6 +301,7 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn" style="background:var(--ltgrey)" onclick="closeDetail()">Close</button>
+      <button class="btn" id="archiveBtn" style="background:#888;color:#fff" onclick="archiveCurrentTask()">Archive</button>
     </div>
   </div>
 </div>
@@ -328,7 +332,7 @@ async function api(method, path, body) {
 async function load() {
   document.getElementById('loading').style.display = 'block';
   [tasks, updates] = await Promise.all([
-    api('GET', 'ai_tasks?order=created_at.desc&select=*'),
+    api('GET', 'ai_tasks?order=updated_at.desc&select=*'),
     api('GET', 'ai_task_updates?order=created_at.asc&select=*'),
   ]);
   document.getElementById('loading').style.display = 'none';
@@ -336,12 +340,14 @@ async function load() {
 }
 
 function getFiltered() {
-  const src  = document.getElementById('filterSource').value;
-  const lane = document.getElementById('filterLane').value;
-  const proj = (document.getElementById('filterProject').value || '').toLowerCase();
-  const pri  = document.getElementById('filterPriority').value;
-  const q    = document.getElementById('filterSearch').value.toLowerCase();
+  const src          = document.getElementById('filterSource').value;
+  const lane         = document.getElementById('filterLane').value;
+  const proj         = (document.getElementById('filterProject').value || '').toLowerCase();
+  const pri          = document.getElementById('filterPriority').value;
+  const q            = document.getElementById('filterSearch').value.toLowerCase();
+  const showArchived = document.getElementById('showArchived').checked;
   return tasks.filter(t =>
+    (showArchived ? true : !t.archived) &&
     (!src  || t.power_source === src || (src === 'Human' && t.power_source.startsWith('Human'))) &&
     (!lane || t.foundation_lane === lane) &&
     (!proj || (t.project||'').toLowerCase().includes(proj)) &&
@@ -587,6 +593,9 @@ async function openDetail(id) {
       </div>
     </div>
   `;
+  const archBtn = document.getElementById('archiveBtn');
+  archBtn.textContent = t.archived ? 'Unarchive' : 'Archive';
+  archBtn.style.background = t.archived ? 'var(--green)' : '#888';
   document.getElementById('detailOverlay').classList.add('open');
 }
 
@@ -596,6 +605,17 @@ async function changeStatus(id, status) {
   await api('PATCH', `ai_tasks?id=eq.${id}`, {status, updated_at: new Date().toISOString()});
   const idx = tasks.findIndex(t => t.id === id);
   if (idx >= 0) tasks[idx].status = status;
+  closeDetail();
+  render();
+}
+
+async function archiveCurrentTask() {
+  const t = tasks.find(x => x.id === currentDetailId);
+  if (!t) return;
+  const nowArchived = !t.archived;
+  await api('PATCH', `ai_tasks?id=eq.${t.id}`, {archived: nowArchived, updated_at: new Date().toISOString()});
+  const idx = tasks.findIndex(x => x.id === t.id);
+  if (idx >= 0) tasks[idx].archived = nowArchived;
   closeDetail();
   render();
 }
