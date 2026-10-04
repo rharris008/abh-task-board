@@ -78,8 +78,9 @@ body{font-family:Arial,sans-serif;font-size:13px;color:var(--dktext);background:
 .due-soon{color:var(--red);font-weight:bold}
 
 /* LIST VIEW */
-.list-view{padding:0 20px 20px;max-height:calc(100vh - 220px);overflow-y:auto}
-table.task-list{width:100%;border-collapse:collapse;background:var(--white);border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.list-view{padding:0 20px 20px}
+.table-wrap{border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);max-height:calc(100vh - 230px);overflow-y:auto}
+table.task-list{width:100%;border-collapse:separate;border-spacing:0;background:var(--white)}
 table.task-list th{background:var(--navy);color:var(--white);padding:8px 10px;font-size:11px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none}
 table.task-list th:hover{background:#152240}
 table.task-list td{padding:8px 10px;font-size:12px;border-bottom:1px solid var(--ltgrey);vertical-align:top}
@@ -181,6 +182,7 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
 </div>
 <div id="listView" style="display:none">
   <div class="list-view">
+    <div class="table-wrap">
     <table class="task-list">
       <thead><tr>
         <th onclick="sortBy('title')">Title<span class="sort-arrow" id="sa-title">&#8597;</span></th>
@@ -193,6 +195,7 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
       </tr></thead>
       <tbody id="listBody"></tbody>
     </table>
+    </div>
   </div>
 </div>
 
