@@ -146,17 +146,13 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
   </select>
   <select id="filterLane" onchange="render()">
     <option value="">All lanes</option>
-    <option>Board packs</option>
-    <option>Production</option>
-    <option>Sales</option>
-    <option>NetSuite</option>
     <option>Finance</option>
-    <option>HR</option>
-    <option>QC</option>
-    <option>Learning &amp; Development</option>
+    <option>Operations</option>
+    <option>People</option>
     <option>Marketing</option>
     <option>Ops</option>
   </select>
+  <input id="filterProject" placeholder="Project…" oninput="render()" style="min-width:120px">
   <select id="filterPriority" onchange="render()">
     <option value="">All priorities</option>
     <option value="critical">Critical</option>
@@ -224,18 +220,19 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
           <label>Foundation Lane</label>
           <select id="fLane">
             <option value="">— select —</option>
-            <option>Board packs</option>
-            <option>Production</option>
-            <option>Sales</option>
-            <option>NetSuite</option>
             <option>Finance</option>
-            <option>HR</option>
-            <option>QC</option>
-            <option>Learning &amp; Development</option>
+            <option>Operations</option>
+            <option>People</option>
             <option>Marketing</option>
             <option>Ops</option>
           </select>
         </div>
+        <div class="form-row">
+          <label>Project</label>
+          <input id="fProject" placeholder="e.g. Board Pack, AP Automation">
+        </div>
+      </div>
+      <div class="form-2col">
         <div class="form-row">
           <label>Priority</label>
           <select id="fPriority">
@@ -243,6 +240,16 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
             <option value="high">High</option>
             <option value="critical">Critical</option>
             <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Status</label>
+          <select id="fStatus">
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="on_hold">On Hold</option>
+            <option value="needs_signoff">Needs Sign-off</option>
+            <option value="complete">Complete</option>
           </select>
         </div>
       </div>
@@ -262,18 +269,11 @@ table.task-list tr:hover td{background:#f7f9fc;cursor:pointer}
       </div>
       <div class="form-2col">
         <div class="form-row">
-          <label>Status</label>
-          <select id="fStatus">
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="on_hold">On Hold</option>
-            <option value="needs_signoff">Needs Sign-off</option>
-            <option value="complete">Complete</option>
-          </select>
-        </div>
-        <div class="form-row">
           <label>Due Date</label>
           <input id="fDue" type="date">
+        </div>
+        <div class="form-row">
+          <label>&nbsp;</label>
         </div>
       </div>
       <div class="form-row">
@@ -338,13 +338,15 @@ async function load() {
 }
 
 function getFiltered() {
-  const src = document.getElementById('filterSource').value;
+  const src  = document.getElementById('filterSource').value;
   const lane = document.getElementById('filterLane').value;
-  const pri = document.getElementById('filterPriority').value;
-  const q = document.getElementById('filterSearch').value.toLowerCase();
+  const proj = (document.getElementById('filterProject').value || '').toLowerCase();
+  const pri  = document.getElementById('filterPriority').value;
+  const q    = document.getElementById('filterSearch').value.toLowerCase();
   return tasks.filter(t =>
     (!src  || t.power_source === src || (src === 'Human' && t.power_source.startsWith('Human'))) &&
     (!lane || t.foundation_lane === lane) &&
+    (!proj || (t.project||'').toLowerCase().includes(proj)) &&
     (!pri  || t.priority === pri) &&
     (!q    || t.title.toLowerCase().includes(q) || (t.goal||'').toLowerCase().includes(q))
   );
@@ -386,6 +388,7 @@ function cardHtml(t) {
     <div class="card-meta">
       ${srcBadge}
       ${t.foundation_lane ? `<span class="badge badge-lane">${esc(t.foundation_lane)}</span>` : ''}
+      ${t.project ? `<span class="badge" style="background:#eaf3fb;color:#0a5fa0;border:1px solid #b3d4f0">${esc(t.project)}</span>` : ''}
       <span class="badge badge-${priCls}">${priCls}</span>
       ${due}
     </div>
@@ -397,7 +400,10 @@ function renderList(ft) {
     ? ft.map(t => `<tr onclick="openDetail('${t.id}')">
         <td><strong>${esc(t.title)}</strong><br><span style="color:#888;font-size:10px">${esc((t.goal||'').substring(0,80))}${(t.goal||'').length > 80 ? '…' : ''}</span></td>
         <td>${sourceBadge(t.power_source)}</td>
-        <td>${t.foundation_lane ? `<span class="badge badge-lane">${esc(t.foundation_lane)}</span>` : '<span style="color:#aaa">—</span>'}</td>
+        <td>
+          ${t.foundation_lane ? `<span class="badge badge-lane">${esc(t.foundation_lane)}</span>` : '<span style="color:#aaa">—</span>'}
+          ${t.project ? `<br><span style="font-size:10px;color:#0a5fa0">${esc(t.project)}</span>` : ''}
+        </td>
         <td><span class="status-pill status-${t.status}">${statusLabel(t.status)}</span></td>
         <td><span class="badge badge-${t.priority||'normal'}">${t.priority||'normal'}</span></td>
         <td>${t.due_date ? `<span class="${isDueSoon(t.due_date) ? 'due-soon' : ''}">${fmtDate(t.due_date)}</span>` : '—'}</td>
@@ -455,7 +461,7 @@ function setView(v) {
 function openAddModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'New Task';
-  ['fTitle','fGoal','fAssigned','fTrail','fRepo','fUrl','fSops'].forEach(id => document.getElementById(id).value = '');
+  ['fTitle','fGoal','fAssigned','fProject','fTrail','fRepo','fUrl','fSops'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fSource').value = 'Nike';
   document.getElementById('fLane').value = '';
   document.getElementById('fPriority').value = 'normal';
@@ -477,6 +483,7 @@ function editCurrentTask() {
   document.getElementById('fSource').value = t.power_source || 'Nike';
   document.getElementById('fAssigned').value = '';
   document.getElementById('fLane').value = t.foundation_lane || '';
+  document.getElementById('fProject').value = t.project || '';
   document.getElementById('fPriority').value = t.priority || 'normal';
   document.getElementById('fStatus').value = t.status || 'open';
   document.getElementById('fTrail').value = t.foundation_trail_path || '';
@@ -505,6 +512,7 @@ async function saveTask() {
     goal,
     power_source: document.getElementById('fSource').value,
     foundation_lane: document.getElementById('fLane').value || null,
+    project: document.getElementById('fProject').value.trim() || null,
     priority: document.getElementById('fPriority').value,
     status: document.getElementById('fStatus').value,
     foundation_trail_path: document.getElementById('fTrail').value.trim() || null,
@@ -549,6 +557,7 @@ async function openDetail(id) {
         <div class="detail-field"><label>Status</label><p><span class="status-pill status-${t.status}">${statusLabel(t.status)}</span></p></div>
         <div class="detail-field"><label>Priority</label><p><span class="badge badge-${t.priority||'normal'}">${t.priority||'normal'}</span></p></div>
         <div class="detail-field"><label>Foundation Lane</label><p>${t.foundation_lane ? `<span class="badge badge-lane">${esc(t.foundation_lane)}</span>` : '—'}</p></div>
+        <div class="detail-field"><label>Project</label><p>${t.project ? `<span class="badge" style="background:#eaf3fb;color:#0a5fa0;border:1px solid #b3d4f0">${esc(t.project)}</span>` : '—'}</p></div>
         <div class="detail-field"><label>Due Date</label><p>${t.due_date ? fmtDate(t.due_date) : '—'}</p></div>
         <div class="detail-field"><label>Created</label><p>${fmtDateTime(t.created_at)}</p></div>
         ${t.foundation_trail_path ? `<div class="detail-field" style="grid-column:1/-1"><label>Foundation Trail</label><p style="word-break:break-all;font-size:11px">${esc(t.foundation_trail_path)}</p></div>` : ''}
