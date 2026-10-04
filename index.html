@@ -594,7 +594,7 @@ async function openDetail(id) {
     </div>
   `;
   const archBtn = document.getElementById('archiveBtn');
-  archBtn.textContent = t.archived ? 'Unarchive' : 'Archive';
+  archBtn.textContent = t.archived ? 'Unarchive' : 'Archive & Close';
   archBtn.style.background = t.archived ? 'var(--green)' : '#888';
   document.getElementById('detailOverlay').classList.add('open');
 }
@@ -613,9 +613,11 @@ async function archiveCurrentTask() {
   const t = tasks.find(x => x.id === currentDetailId);
   if (!t) return;
   const nowArchived = !t.archived;
-  await api('PATCH', `ai_tasks?id=eq.${t.id}`, {archived: nowArchived, updated_at: new Date().toISOString()});
+  const patch = {archived: nowArchived, updated_at: new Date().toISOString()};
+  if (nowArchived) patch.status = 'complete';
+  await api('PATCH', `ai_tasks?id=eq.${t.id}`, patch);
   const idx = tasks.findIndex(x => x.id === t.id);
-  if (idx >= 0) tasks[idx].archived = nowArchived;
+  if (idx >= 0) { tasks[idx].archived = nowArchived; if (nowArchived) tasks[idx].status = 'complete'; }
   closeDetail();
   render();
 }
